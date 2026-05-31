@@ -1,5 +1,21 @@
 # Issue Series Orchestrator Reference
 
+## Runtime-skill preflight
+
+Before launching the first implementation or fix worker, verify that the subagent runtime can actually inject the configured implementation skill. This catches skill discovery/configuration failures before any source-editing worker or output artifact can dirty the target repo.
+
+```ts
+subagent({
+  agent: "delegate",
+  task: `Read-only smoke test. Report whether the expected injected implementation skill is present in your loaded instructions. Expected skill: ${workflow.implementationSkill ?? "tdd"}. Do not edit files. Return injected=yes/no and one sentence of evidence.`,
+  skill: workflow.implementationSkill ?? "tdd",
+  context: "fresh",
+  output: false
+})
+```
+
+If the smoke test reports `injected=no`, stop. Do not retry by switching from `skill: "tdd"` to `skill: ["tdd"]`; both forms should resolve the same skill. Diagnose subagent skill discovery/configuration instead.
+
 ## Implementation worker launch
 
 Resolve `workflow.implementationSkill` before launch. It is required; default to `tdd` unless the user explicitly overrides it. Launch the implementation worker with the runtime skill override so the worker receives the actual skill content, not only prose guidance:
@@ -9,11 +25,12 @@ subagent({
   agent: "worker",
   task: implementationWorkerPrompt,
   skill: workflow.implementationSkill ?? "tdd",
-  async: true
+  async: true,
+  output: false
 })
 ```
 
-The worker must not be launched for source-editing work without this runtime `skill` parameter.
+The worker must not be launched for source-editing work without this runtime `skill` parameter. Do not write subagent output artifacts under `repo.cwd`; use `output: false` unless an explicit artifact path outside the target repo is required.
 
 ## Implementation worker prompt template
 
@@ -77,7 +94,8 @@ subagent({
   agent: "worker",
   task: acceptanceReviewerPrompt,
   skill: review.reviewerSkill, // expected: "review"
-  async: true
+  async: true,
+  output: false
 })
 ```
 
@@ -178,11 +196,12 @@ subagent({
   agent: "worker",
   task: fixWorkerPrompt,
   skill: workflow.implementationSkill ?? "tdd",
-  async: true
+  async: true,
+  output: false
 })
 ```
 
-The fix worker must not be launched for source-editing work without this runtime `skill` parameter.
+The fix worker must not be launched for source-editing work without this runtime `skill` parameter. Do not write subagent output artifacts under `repo.cwd`; use `output: false` unless an explicit artifact path outside the target repo is required.
 
 ## Fix worker prompt template
 
@@ -228,9 +247,11 @@ Report:
 
 - Prefer async subagent launches unless the parent has nothing useful to do.
 - Treat `workflow.implementationSkill` as required. Default to `tdd` only when omitted and not explicitly overridden by the user.
+- Run the read-only runtime-skill preflight before the first source-editing worker.
 - Never launch implementation or fix workers without the runtime `skill` parameter.
 - Implementation workers and fix workers must receive `skill: workflow.implementationSkill` in the `subagent(...)` call.
-- If a worker reports `blocked-missing-implementation-skill`, stop orchestration and ask the user; do not continue with prose-only TDD instructions.
+- If the preflight fails or a worker reports `blocked-missing-implementation-skill`, stop orchestration and ask the user; do not continue with prose-only TDD instructions.
+- Do not dirty `repo.cwd` with subagent output artifacts. Prefer `output: false`; if artifacts are necessary, use an absolute path outside the target repo.
 - Acceptance reviewer must receive `skill: review.reviewerSkill` in the `subagent(...)` call; for this workflow the manifest should set `review.reviewerSkill: review` so `/skill:review` is always used.
 - Pass the issue start SHA, `review.comparisonSources`, and `review.mustRejectIf` into the reviewer prompt every time.
 - Implementation/fix workers use `workflow.implementationSkill`; reviewers use `review.reviewerSkill` (`review`).

@@ -2,9 +2,12 @@
   "name": "mattpocock-skills",
   "skills": [
     "./skills/engineering/diagnose",
+    "./skills/engineering/git-commit",
     "./skills/engineering/grill-with-docs",
     "./skills/engineering/triage",
     "./skills/engineering/improve-codebase-architecture",
+    "./skills/engineering/issue-series-manifest",
+    "./skills/engineering/issue-series-orchestrator",
     "./skills/engineering/setup-matt-pocock-skills",
     "./skills/engineering/tdd",
     "./skills/engineering/to-issues",
