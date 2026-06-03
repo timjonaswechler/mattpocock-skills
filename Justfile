@@ -24,6 +24,7 @@ sync: remote-upstream
     -git stash pop
 
     @echo "Sync complete."
+    @echo "https://github.com/timjonaswechler/mattpocock-skills"
 
 # Full update: remote + sync
 update: sync
